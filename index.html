@@ -46,6 +46,7 @@
   button:active { transform: scale(0.97); }
   .btn-primary { background: #7f77dd; color: #fff; border: none; }
   .btn-rest { background: #1d9e75; color: #fff; border: none; }
+  .btn-save { background: #1d9e75; color: #fff; border: none; }
   .mode-pill {
     display: inline-block;
     font-size: 13px;
@@ -77,6 +78,12 @@
   .today-item { padding: 6px 0; font-size: 16px; }
   .arrow { font-size: 13px; color: #9a988f; }
   .hint { font-size: 13px; color: #5f5e5a; margin-top: 6px; }
+  .nota-box { margin-top: 14px; border-top: 1px dashed #e3ddd3; padding-top: 10px; }
+  .nota-box textarea {
+    width: 100%; min-height: 90px; font-family: inherit; font-size: 15px;
+    padding: 10px; border-radius: 10px; border: 1px solid #cfc6b8; resize: vertical;
+  }
+  .nota-status { font-size: 13px; color: #5f5e5a; margin-top: 4px; }
 </style>
 </head>
 <body>
@@ -118,6 +125,47 @@
 </div>
 
 <div id="blocos"></div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyD5B5y-djVnB2a9YrAyMbr4USiaGpuqz5s",
+    authDomain: "planodeetudotjsp.firebaseapp.com",
+    projectId: "planodeetudotjsp",
+    storageBucket: "planodeetudotjsp.firebasestorage.app",
+    messagingSenderId: "931416558905",
+    appId: "1:931416558905:web:4ebac550dfc2187cd52ce8"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  window.salvarNota = async function(blocoId) {
+    const texto = document.getElementById('nota-' + blocoId).value;
+    const status = document.getElementById('status-' + blocoId);
+    status.textContent = 'Salvando...';
+    try {
+      await setDoc(doc(db, 'anotacoes', blocoId), { texto: texto, atualizadoEm: new Date().toISOString() });
+      const agora = new Date();
+      status.textContent = 'Salvo às ' + agora.getHours().toString().padStart(2,'0') + ':' + agora.getMinutes().toString().padStart(2,'0');
+    } catch (e) {
+      status.textContent = 'Não consegui salvar. Confira sua internet e tente de novo.';
+    }
+  };
+
+  window.carregarNota = async function(blocoId) {
+    try {
+      const snap = await getDoc(doc(db, 'anotacoes', blocoId));
+      if (snap.exists()) {
+        document.getElementById('nota-' + blocoId).value = snap.data().texto || '';
+      }
+    } catch (e) {}
+  };
+
+  window.firebasePronto = true;
+</script>
 
 <script>
 const data = {
@@ -216,17 +264,24 @@ const data = {
 
 let state = {};
 
-async function carregar() {
+function slug(txt) {
+  return txt.toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+}
+
+function carregar() {
   try {
-    const r = await window.storage.get('tjsp-progresso', false);
-    if (r && r.value) state = JSON.parse(r.value);
+    const raw = localStorage.getItem('tjsp-progresso');
+    if (raw) state = JSON.parse(raw);
   } catch (e) { state = {}; }
   montarBlocos();
   atualizarProgresso();
 }
 
-async function salvar() {
-  try { await window.storage.set('tjsp-progresso', JSON.stringify(state), false); }
+function salvar() {
+  try { localStorage.setItem('tjsp-progresso', JSON.stringify(state)); }
   catch (e) {}
 }
 
@@ -235,6 +290,7 @@ function montarBlocos() {
   container.innerHTML = '';
   Object.keys(data).forEach((bloco, bi) => {
     const tarefas = data[bloco];
+    const blocoId = slug(bloco);
     const card = document.createElement('div');
     card.className = 'card';
     const feitos = tarefas.filter((_, ti) => state[bloco + '|' + ti]).length;
@@ -246,10 +302,20 @@ function montarBlocos() {
         </div>
         <div class="arrow" id="arrow-${bi}">tocar para abrir</div>
       </div>
-      <div class="task-list" id="list-${bi}"></div>
+      <div class="task-list" id="list-${bi}">
+        <div id="tasks-${bi}"></div>
+        <div class="nota-box">
+          <h2 style="margin-top:0;">Minhas anotações</h2>
+          <textarea id="nota-${blocoId}" placeholder="Escreva aqui o que quiser guardar sobre este bloco..."></textarea>
+          <div class="btn-row">
+            <button class="btn-save" onclick="salvarNota('${blocoId}')">Salvar anotação</button>
+          </div>
+          <div class="nota-status" id="status-${blocoId}"></div>
+        </div>
+      </div>
     `;
     container.appendChild(card);
-    const list = card.querySelector('#list-' + bi);
+    const list = card.querySelector('#tasks-' + bi);
     tarefas.forEach((t, ti) => {
       const key = bloco + '|' + ti;
       const done = !!state[key];
@@ -281,6 +347,11 @@ function toggleBloco(bi) {
   const arrow = document.getElementById('arrow-' + bi);
   const open = list.classList.toggle('open');
   arrow.textContent = open ? 'tocar para fechar' : 'tocar para abrir';
+  if (open) {
+    const blocoNome = Object.keys(data)[bi];
+    const blocoId = slug(blocoNome);
+    if (window.carregarNota) window.carregarNota(blocoId);
+  }
 }
 
 function atualizarProgresso() {
@@ -323,7 +394,6 @@ let duracao = 15 * 60;
 let restante = duracao;
 let rodando = false;
 let intervalId = null;
-let emPausa = false;
 
 function formatar(s) {
   const m = Math.floor(s / 60).toString().padStart(2, '0');
@@ -340,16 +410,11 @@ function setDuration(min) {
 }
 
 function toggleTimer() {
-  if (rodando) {
-    pausarTimer();
-  } else {
-    iniciarTimer();
-  }
+  if (rodando) { pausarTimer(); } else { iniciarTimer(); }
 }
 
 function iniciarTimer() {
   rodando = true;
-  emPausa = false;
   document.getElementById('mode-pill').textContent = 'Foco';
   document.getElementById('mode-pill').className = 'mode-pill mode-foco';
   document.getElementById('start-btn').textContent = 'Pausar';
