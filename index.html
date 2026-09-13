@@ -2,43 +2,41 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Plano de estudo - Escrevente TJSP</title>
 <style>
   * { box-sizing: border-box; }
   body {
     font-family: Verdana, Arial, sans-serif;
-    background: #fdf6f0;
+    background: #f6f2ec;
     color: #2c2c2a;
     margin: 0;
-    padding: 16px;
+    padding: 0;
     font-size: 17px;
     line-height: 1.7;
   }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 16px; }
   h1 { font-size: 20px; margin: 0 0 4px; }
-  h2 { font-size: 17px; margin: 20px 0 8px; }
-  .sub { color: #5f5e5a; font-size: 14px; margin-bottom: 16px; }
-  .card {
+  h2 { font-size: 17px; margin: 0 0 10px; }
+  .sub { color: #6b6a63; font-size: 14px; margin-bottom: 16px; }
+
+  .top-card {
     background: #ffffff;
-    border: 1px solid #e3ddd3;
-    border-radius: 14px;
-    padding: 14px 16px;
+    border-radius: 16px;
+    padding: 16px 18px;
     margin-bottom: 14px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
   }
-  .timer-display {
-    font-size: 48px;
-    font-weight: bold;
-    text-align: center;
-    letter-spacing: 2px;
-    margin: 8px 0;
-  }
-  .timer-label { text-align: center; font-size: 14px; color: #5f5e5a; margin-bottom: 8px; }
-  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 10px; }
+  .progress-wrap { background: #ece5da; border-radius: 20px; height: 14px; overflow: hidden; margin: 8px 0 4px; }
+  .progress-bar { background: linear-gradient(90deg,#1d9e75,#5dcaa5); height: 100%; width: 0%; transition: width 0.3s; }
+  .progress-text { font-size: 14px; color: #6b6a63; font-weight: bold; }
+
   button {
     font-family: inherit;
     font-size: 15px;
     padding: 10px 16px;
     border-radius: 10px;
-    border: 1px solid #cfc6b8;
+    border: 1px solid #d8d0c2;
     background: #fff;
     cursor: pointer;
     min-height: 44px;
@@ -47,88 +45,104 @@
   .btn-primary { background: #7f77dd; color: #fff; border: none; }
   .btn-rest { background: #1d9e75; color: #fff; border: none; }
   .btn-save { background: #1d9e75; color: #fff; border: none; }
-  .mode-pill {
-    display: inline-block;
-    font-size: 13px;
-    padding: 3px 10px;
-    border-radius: 20px;
-    margin-bottom: 8px;
-  }
+  .btn-danger { background: #fff; color: #a32d2d; border: 1px solid #f0bcbc; font-size: 13px; padding: 6px 10px; min-height: auto; }
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  .timer-display { font-size: 40px; font-weight: bold; text-align: center; letter-spacing: 2px; margin: 4px 0; }
+  .timer-label { text-align: center; font-size: 13px; color: #6b6a63; margin-bottom: 8px; }
+  .mode-pill { display: inline-block; font-size: 13px; padding: 3px 10px; border-radius: 20px; margin-bottom: 6px; }
   .mode-foco { background: #eeedfe; color: #26215c; }
   .mode-pausa { background: #e1f5ee; color: #04342c; }
-  .progress-wrap { background: #ece5da; border-radius: 20px; height: 14px; overflow: hidden; margin: 6px 0 4px; }
-  .progress-bar { background: #1d9e75; height: 100%; width: 0%; transition: width 0.3s; }
-  .progress-text { font-size: 14px; color: #5f5e5a; }
-  .bloco-header {
-    display: flex; justify-content: space-between; align-items: center;
-    cursor: pointer; padding: 4px 0;
+
+  .today-box { background: #fff9ec; border: 1px solid #eecf8f; }
+  .today-item { padding: 6px 0; font-size: 16px; }
+
+  .tabs-scroll { overflow-x: auto; white-space: nowrap; padding-bottom: 8px; margin-bottom: 4px; -webkit-overflow-scrolling: touch; }
+  .tab-btn {
+    display: inline-block; margin-right: 8px; padding: 10px 16px;
+    border-radius: 20px; border: 1px solid #d8d0c2; background: #fff;
+    font-size: 14px; cursor: pointer; min-height: 40px;
   }
-  .bloco-title { font-weight: bold; font-size: 16px; }
-  .bloco-count { font-size: 13px; color: #5f5e5a; }
-  .task-list { margin-top: 8px; display: none; }
-  .task-list.open { display: block; }
-  .task {
-    display: flex; align-items: flex-start; gap: 10px;
-    padding: 10px 4px; border-top: 1px solid #f0ebe2;
-  }
+  .tab-btn.active { background: #26215c; color: #fff; border-color: #26215c; }
+
+  .page { display: none; }
+  .page.active { display: block; }
+
+  .bloco-card { background: #ffffff; border-radius: 16px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+  .bloco-count { font-size: 13px; color: #6b6a63; margin-bottom: 10px; }
+  .task { display: flex; align-items: flex-start; gap: 10px; padding: 10px 2px; border-top: 1px solid #f0ebe2; }
+  .task:first-of-type { border-top: none; }
   .task input[type="checkbox"] { width: 22px; height: 22px; margin-top: 2px; flex-shrink: 0; }
   .task label { flex: 1; cursor: pointer; }
   .task.done label { text-decoration: line-through; color: #9a988f; }
-  .today-box { background: #fff9ec; border: 1px solid #eecf8f; }
-  .today-item { padding: 6px 0; font-size: 16px; }
-  .arrow { font-size: 13px; color: #9a988f; }
-  .hint { font-size: 13px; color: #5f5e5a; margin-top: 6px; }
-  .nota-box { margin-top: 14px; border-top: 1px dashed #e3ddd3; padding-top: 10px; }
-  .nota-box textarea {
-    width: 100%; min-height: 90px; font-family: inherit; font-size: 15px;
-    padding: 10px; border-radius: 10px; border: 1px solid #cfc6b8; resize: vertical;
+
+  .notas-section { margin-top: 22px; border-top: 2px dashed #e3ddd3; padding-top: 16px; }
+  .nota-form textarea {
+    width: 100%; min-height: 70px; font-family: inherit; font-size: 15px;
+    padding: 10px; border-radius: 10px; border: 1px solid #d8d0c2; resize: vertical;
   }
-  .nota-status { font-size: 13px; color: #5f5e5a; margin-top: 4px; }
+  .nota-status { font-size: 13px; color: #6b6a63; margin: 6px 0 12px; }
+  .nota-card {
+    background: #faf7f2; border-radius: 12px; padding: 12px 14px; margin-bottom: 10px;
+    border-left: 4px solid #7f77dd;
+  }
+  .nota-card .nota-texto { white-space: pre-wrap; margin-bottom: 6px; }
+  .nota-card .nota-meta { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #9a988f; }
+  .hint { font-size: 13px; color: #6b6a63; margin-top: 6px; }
 </style>
 </head>
 <body>
+<div class="wrap">
 
 <h1>Plano de estudo — Escrevente Técnico Judiciário (TJSP)</h1>
 <p class="sub">Blocos curtos, metas pequenas, sem culpa nas pausas.</p>
 
-<div class="card">
+<div class="top-card">
   <div class="progress-text" id="progress-text">0 de 0 tarefas concluídas</div>
   <div class="progress-wrap"><div class="progress-bar" id="progress-bar"></div></div>
 </div>
 
-<div class="card today-box">
-  <h2 style="margin-top:0;">O que estudar agora</h2>
+<div class="top-card today-box">
+  <h2>O que estudar agora</h2>
   <div id="today-list"><p class="hint">Toque no botão para receber 2 tarefas pequenas.</p></div>
   <div class="btn-row">
     <button class="btn-primary" onclick="sugerirHoje()">Me dá 2 tarefas de hoje</button>
   </div>
 </div>
 
-<div class="card">
-  <h2 style="margin-top:0; text-align:center;">Timer de estudo</h2>
-  <div class="mode-pill mode-foco" id="mode-pill">Foco</div>
+<div class="top-card">
+  <h2 style="text-align:center;">Timer de estudo</h2>
+  <div style="text-align:center;">
+    <span class="mode-pill mode-foco" id="mode-pill">Foco</span>
+  </div>
   <div class="timer-display" id="timer-display">15:00</div>
   <div class="timer-label" id="timer-label">Escolha um tempo e comece quando estiver pronta</div>
-  <div class="btn-row">
+  <div class="btn-row" style="justify-content:center;">
     <button onclick="setDuration(10)">10 min</button>
     <button onclick="setDuration(15)">15 min</button>
     <button onclick="setDuration(20)">20 min</button>
   </div>
-  <div class="btn-row">
+  <div class="btn-row" style="justify-content:center; margin-top:8px;">
     <button class="btn-primary" id="start-btn" onclick="toggleTimer()">Começar</button>
     <button onclick="resetTimer()">Reiniciar</button>
   </div>
-  <div class="btn-row">
+  <div class="btn-row" style="justify-content:center; margin-top:8px;">
     <button class="btn-rest" onclick="modoDescanso()">Preciso descansar agora</button>
   </div>
-  <div class="hint" id="rest-msg"></div>
+  <div class="hint" id="rest-msg" style="text-align:center;"></div>
 </div>
 
-<div id="blocos"></div>
+<div class="tabs-scroll" id="tabs"></div>
+<div id="pages"></div>
+
+</div>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-  import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  import {
+    getFirestore, collection, addDoc, deleteDoc, doc,
+    getDocs, query, orderBy, serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyD5B5y-djVnB2a9YrAyMbr4USiaGpuqz5s",
@@ -142,34 +156,73 @@
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
 
-  window.salvarNota = async function(blocoId) {
-    const texto = document.getElementById('nota-' + blocoId).value;
-    const status = document.getElementById('status-' + blocoId);
+  function notasRef(blocoId) {
+    return collection(db, 'anotacoes', blocoId, 'notas');
+  }
+
+  window.adicionarNota = async function(blocoId) {
+    const textarea = document.getElementById('nota-input-' + blocoId);
+    const status = document.getElementById('nota-status-' + blocoId);
+    const texto = textarea.value.trim();
+    if (!texto) {
+      status.textContent = 'Escreva algo antes de salvar.';
+      return;
+    }
     status.textContent = 'Salvando...';
     try {
-      await setDoc(doc(db, 'anotacoes', blocoId), { texto: texto, atualizadoEm: new Date().toISOString() });
-      const agora = new Date();
-      status.textContent = 'Salvo às ' + agora.getHours().toString().padStart(2,'0') + ':' + agora.getMinutes().toString().padStart(2,'0');
+      await addDoc(notasRef(blocoId), { texto: texto, criadoEm: serverTimestamp() });
+      textarea.value = '';
+      status.textContent = 'Anotação salva!';
+      await window.carregarNotas(blocoId);
     } catch (e) {
-      status.textContent = 'Não consegui salvar. Confira sua internet e tente de novo.';
+      status.textContent = 'Erro ao salvar: ' + e.message;
     }
   };
 
-  window.carregarNota = async function(blocoId) {
+  window.apagarNota = async function(blocoId, notaId) {
     try {
-      const snap = await getDoc(doc(db, 'anotacoes', blocoId));
-      if (snap.exists()) {
-        document.getElementById('nota-' + blocoId).value = snap.data().texto || '';
-      }
+      await deleteDoc(doc(db, 'anotacoes', blocoId, 'notas', notaId));
+      await window.carregarNotas(blocoId);
     } catch (e) {}
   };
 
-  window.firebasePronto = true;
+  window.carregarNotas = async function(blocoId) {
+    const lista = document.getElementById('notas-lista-' + blocoId);
+    if (!lista) return;
+    lista.innerHTML = '<p class="hint">Carregando...</p>';
+    try {
+      const q = query(notasRef(blocoId), orderBy('criadoEm', 'desc'));
+      const snap = await getDocs(q);
+      if (snap.empty) {
+        lista.innerHTML = '<p class="hint">Nenhuma anotação ainda neste bloco.</p>';
+        return;
+      }
+      lista.innerHTML = '';
+      snap.forEach(d => {
+        const item = d.data();
+        const data = item.criadoEm && item.criadoEm.toDate ? item.criadoEm.toDate() : new Date();
+        const dataFmt = data.toLocaleDateString('pt-BR') + ' às ' + data.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+        const card = document.createElement('div');
+        card.className = 'nota-card';
+        card.innerHTML = `
+          <div class="nota-texto"></div>
+          <div class="nota-meta">
+            <span>${dataFmt}</span>
+            <button class="btn-danger" onclick="apagarNota('${blocoId}','${d.id}')">Apagar</button>
+          </div>
+        `;
+        card.querySelector('.nota-texto').textContent = item.texto;
+        lista.appendChild(card);
+      });
+    } catch (e) {
+      lista.innerHTML = '<p class="hint">Erro ao carregar: ' + e.message + '</p>';
+    }
+  };
 </script>
 
 <script>
 const data = {
-  "Bloco I - Língua Portuguesa": [
+  "Português": [
     "Ler um texto curto e responder: qual é a ideia principal?",
     "Achar sinônimos e antônimos de 5 palavras de um texto",
     "Ver 5 exemplos de sentido próprio x sentido figurado",
@@ -184,7 +237,7 @@ const data = {
     "Fazer 10 questões sobre coesão e coerência textual",
     "Revisão geral: fazer uma prova simulada curta de português"
   ],
-  "Bloco II - Direito Penal": [
+  "Direito Penal": [
     "Ler artigos 293 a 305 do Código Penal (falsificação de documentos)",
     "Ler artigos 307, 308 e 311-A (falsa identidade, fraude em concurso)",
     "Ler artigos 312 a 317 (crimes contra a administração pública)",
@@ -193,7 +246,7 @@ const data = {
     "Ler artigos 357 e 359",
     "Fazer um resumo em áudio ou desenho dos crimes mais importantes"
   ],
-  "Bloco II - Direito Processual Penal": [
+  "Processo Penal": [
     "Ler artigos 251 a 258 e 261 a 267 do CPP",
     "Ler artigo 274 e artigos 351 a 372",
     "Ler artigos 394 a 497 (procedimento comum e júri)",
@@ -202,7 +255,7 @@ const data = {
     "Ler Lei 9.099/95, artigos 60 a 83 (Juizados Especiais Criminais)",
     "Ler Lei 9.099/95, artigos 88 e 89"
   ],
-  "Bloco II - Direito Processual Civil": [
+  "Processo Civil": [
     "Ler artigos 144 a 155 do CPC (impedimento e suspeição)",
     "Ler artigos 188 a 275 do CPC",
     "Ler artigos 294 a 311 (tutela provisória)",
@@ -211,14 +264,14 @@ const data = {
     "Ler Lei 9.099/95, artigos 3 a 19 (Juizados Especiais Cíveis)",
     "Ler Lei 12.153/2009 (Juizados da Fazenda Pública)"
   ],
-  "Bloco II - Direito Constitucional e Administrativo": [
+  "Constitucional e Adm.": [
     "Ler Constituição Federal - Título II, Capítulos I, II e III",
     "Ler Constituição Federal - Título III, Capítulo VII, Seções I e II",
     "Ler artigo 92 da Constituição Federal",
     "Ler Lei 10.261/68 (Estatuto dos Funcionários Públicos SP), artigos 239 a 323",
     "Ler Lei 8.429/92 (Lei de Improbidade Administrativa)"
   ],
-  "Bloco II - Normas da Corregedoria": [
+  "Corregedoria": [
     "Ler Tomo I, Capítulo II, Seção I (subseções I e II)",
     "Ler Tomo I, Capítulo III, Seções I, II, V, VI, VII",
     "Ler Tomo I, Capítulo III, Seção VIII (subseções I, II, III)",
@@ -226,12 +279,12 @@ const data = {
     "Ler Tomo I, Capítulo XI, Seções I, IV e V",
     "Ler Tomo I, Capítulo XI, Seção VI (subseções I, III, V, XIII)"
   ],
-  "Bloco III - Atualidades e Estatuto da Pessoa com Deficiência": [
+  "Atualidades": [
     "Acompanhar notícias da semana (política, economia, sociedade)",
     "Ler artigos 1 a 13 da Lei 13.146/2015 (Estatuto da Pessoa com Deficiência)",
     "Ler artigos 34 a 38 da mesma lei"
   ],
-  "Bloco III - Matemática": [
+  "Matemática": [
     "Praticar operações com números reais",
     "Praticar MMC e MDC com exercícios simples",
     "Praticar razão e proporção",
@@ -246,7 +299,7 @@ const data = {
     "Revisar sistemas de medidas usuais",
     "Praticar geometria básica (perímetro, área, volume, Pitágoras)"
   ],
-  "Bloco III - Informática": [
+  "Informática": [
     "Praticar Windows: pastas, arquivos, área de trabalho",
     "Praticar Word: formatação de texto, tabelas, cabeçalhos",
     "Praticar Excel: fórmulas e funções básicas",
@@ -254,7 +307,7 @@ const data = {
     "Revisar uso de e-mail e internet (URL, links, busca)",
     "Revisar Teams e OneDrive (reuniões, compartilhamento de arquivos)"
   ],
-  "Bloco III - Raciocínio Lógico": [
+  "Raciocínio Lógico": [
     "Praticar 5 questões de sequências numéricas",
     "Praticar 5 questões de lógica de argumentação",
     "Praticar 5 questões de diagramas lógicos",
@@ -263,6 +316,7 @@ const data = {
 };
 
 let state = {};
+let abaAtiva = null;
 
 function slug(txt) {
   return txt.toLowerCase()
@@ -276,8 +330,11 @@ function carregar() {
     const raw = localStorage.getItem('tjsp-progresso');
     if (raw) state = JSON.parse(raw);
   } catch (e) { state = {}; }
-  montarBlocos();
+  montarTabs();
+  montarPaginas();
   atualizarProgresso();
+  const primeiraChave = Object.keys(data)[0];
+  abrirAba(slug(primeiraChave));
 }
 
 function salvar() {
@@ -285,45 +342,58 @@ function salvar() {
   catch (e) {}
 }
 
-function montarBlocos() {
-  const container = document.getElementById('blocos');
-  container.innerHTML = '';
-  Object.keys(data).forEach((bloco, bi) => {
+function montarTabs() {
+  const tabs = document.getElementById('tabs');
+  tabs.innerHTML = '';
+  Object.keys(data).forEach(bloco => {
+    const id = slug(bloco);
+    const btn = document.createElement('button');
+    btn.className = 'tab-btn';
+    btn.id = 'tab-' + id;
+    btn.textContent = bloco;
+    btn.onclick = () => abrirAba(id);
+    tabs.appendChild(btn);
+  });
+}
+
+function montarPaginas() {
+  const pages = document.getElementById('pages');
+  pages.innerHTML = '';
+  Object.keys(data).forEach(bloco => {
+    const id = slug(bloco);
     const tarefas = data[bloco];
-    const blocoId = slug(bloco);
-    const card = document.createElement('div');
-    card.className = 'card';
+    const page = document.createElement('div');
+    page.className = 'page';
+    page.id = 'page-' + id;
     const feitos = tarefas.filter((_, ti) => state[bloco + '|' + ti]).length;
-    card.innerHTML = `
-      <div class="bloco-header" onclick="toggleBloco(${bi})">
-        <div>
-          <div class="bloco-title">${bloco}</div>
-          <div class="bloco-count">${feitos} de ${tarefas.length} feitas</div>
-        </div>
-        <div class="arrow" id="arrow-${bi}">tocar para abrir</div>
-      </div>
-      <div class="task-list" id="list-${bi}">
-        <div id="tasks-${bi}"></div>
-        <div class="nota-box">
-          <h2 style="margin-top:0;">Minhas anotações</h2>
-          <textarea id="nota-${blocoId}" placeholder="Escreva aqui o que quiser guardar sobre este bloco..."></textarea>
-          <div class="btn-row">
-            <button class="btn-save" onclick="salvarNota('${blocoId}')">Salvar anotação</button>
+    page.innerHTML = `
+      <div class="bloco-card">
+        <h2>${bloco}</h2>
+        <div class="bloco-count" id="count-${id}">${feitos} de ${tarefas.length} feitas</div>
+        <div id="tasks-${id}"></div>
+        <div class="notas-section">
+          <h2>Minhas anotações</h2>
+          <div class="nota-form">
+            <textarea id="nota-input-${id}" placeholder="Escreva uma anotação nova..."></textarea>
+            <div class="btn-row" style="margin-top:8px;">
+              <button class="btn-save" onclick="adicionarNota('${id}')">Adicionar anotação</button>
+            </div>
+            <div class="nota-status" id="nota-status-${id}"></div>
           </div>
-          <div class="nota-status" id="status-${blocoId}"></div>
+          <div id="notas-lista-${id}"></div>
         </div>
       </div>
     `;
-    container.appendChild(card);
-    const list = card.querySelector('#tasks-' + bi);
+    pages.appendChild(page);
+    const list = page.querySelector('#tasks-' + id);
     tarefas.forEach((t, ti) => {
       const key = bloco + '|' + ti;
       const done = !!state[key];
       const div = document.createElement('div');
       div.className = 'task' + (done ? ' done' : '');
       div.innerHTML = `
-        <input type="checkbox" id="chk-${bi}-${ti}" ${done ? 'checked' : ''}>
-        <label for="chk-${bi}-${ti}">${t}</label>
+        <input type="checkbox" id="chk-${id}-${ti}" ${done ? 'checked' : ''}>
+        <label for="chk-${id}-${ti}">${t}</label>
       `;
       list.appendChild(div);
       div.querySelector('input').addEventListener('change', (e) => {
@@ -331,27 +401,20 @@ function montarBlocos() {
         div.classList.toggle('done', e.target.checked);
         salvar();
         atualizarProgresso();
-        atualizarContagemBloco(bi, bloco, tarefas);
+        const novosFeitos = tarefas.filter((_, i2) => state[bloco + '|' + i2]).length;
+        document.getElementById('count-' + id).textContent = novosFeitos + ' de ' + tarefas.length + ' feitas';
       });
     });
   });
 }
 
-function atualizarContagemBloco(bi, bloco, tarefas) {
-  const feitos = tarefas.filter((_, ti) => state[bloco + '|' + ti]).length;
-  document.querySelectorAll('.bloco-count')[bi].textContent = feitos + ' de ' + tarefas.length + ' feitas';
-}
-
-function toggleBloco(bi) {
-  const list = document.getElementById('list-' + bi);
-  const arrow = document.getElementById('arrow-' + bi);
-  const open = list.classList.toggle('open');
-  arrow.textContent = open ? 'tocar para fechar' : 'tocar para abrir';
-  if (open) {
-    const blocoNome = Object.keys(data)[bi];
-    const blocoId = slug(blocoNome);
-    if (window.carregarNota) window.carregarNota(blocoId);
-  }
+function abrirAba(id) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  document.getElementById('page-' + id).classList.add('active');
+  abaAtiva = id;
+  if (window.carregarNotas) window.carregarNotas(id);
 }
 
 function atualizarProgresso() {
