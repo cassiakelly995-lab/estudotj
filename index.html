@@ -42,10 +42,10 @@
     min-height: 44px;
   }
   button:active { transform: scale(0.97); }
-  .btn-primary { background: #7f77dd; color: #fff; border: none; }
+  .btn-primary { background: #7a1f2c; color: #fff; border: none; }
   .btn-rest { background: #1d9e75; color: #fff; border: none; }
   .btn-save { background: #c9a84c; color: #3a2f0e; border: none; font-weight: bold; }
-  .btn-danger { background: rgba(255,255,255,0.6); color: #a32d2d; border: 1px solid rgba(163,45,45,0.3); font-size: 12px; padding: 4px 9px; min-height: auto; }
+  .btn-danger { background: #fff; color: #a32d2d; border: 1px solid #f0bcbc; font-size: 12px; padding: 5px 10px; min-height: auto; }
   .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
 
   .timer-display { font-size: 40px; font-weight: bold; text-align: center; letter-spacing: 2px; margin: 4px 0; }
@@ -91,29 +91,34 @@
   }
   .nota-status { font-size: 13px; color: #6b6a63; margin-top: 8px; }
 
-  .post-its {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 16px; margin-top: 18px;
-  }
-  .post-it {
-    padding: 14px 14px 10px; border-radius: 2px; min-height: 130px;
-    box-shadow: 3px 4px 10px rgba(0,0,0,0.15);
-    display: flex; flex-direction: column; justify-content: space-between;
+  /* Estilo caderno */
+  .caderno { margin-top: 18px; }
+  .pagina-caderno {
+    background: repeating-linear-gradient(
+      to bottom,
+      #fffdf7 0px, #fffdf7 27px, #dfe6ee 28px
+    );
+    border-radius: 4px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    padding: 14px 16px 14px 22px;
+    margin-bottom: 16px;
+    border-left: 3px solid #d68a8a;
     position: relative;
   }
-  .post-it::before {
-    content: ""; position: absolute; top: -8px; left: 50%; transform: translateX(-50%) rotate(-4deg);
-    width: 34px; height: 14px; background: rgba(255,255,255,0.55); border-radius: 2px;
+  .pagina-caderno .titulo {
+    font-weight: bold; font-size: 16px; margin-bottom: 6px;
+    border-bottom: 1px solid #d8d0c2; padding-bottom: 6px;
   }
-  .post-it.c1 { background: #fff3b0; transform: rotate(-2deg); }
-  .post-it.c2 { background: #ffd6e0; transform: rotate(1.5deg); }
-  .post-it.c3 { background: #cdeedd; transform: rotate(-1deg); }
-  .post-it.c4 { background: #d6e6ff; transform: rotate(2deg); }
-  .post-it .titulo { font-weight: bold; font-size: 15px; margin-bottom: 6px; word-break: break-word; }
-  .post-it .texto { font-size: 14px; white-space: pre-wrap; word-break: break-word; flex: 1; }
-  .post-it .meta { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-size: 11px; color: #5a5a52; }
+  .pagina-caderno .texto {
+    font-size: 15px; white-space: pre-wrap; word-break: break-word;
+  }
+  .pagina-caderno .meta {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 10px; font-size: 12px; color: #8a8a80;
+  }
 
   .hint { font-size: 13px; color: #6b6a63; margin-top: 6px; }
+  .hint a { color: #26215c; font-weight: bold; text-decoration: underline; }
 </style>
 </head>
 <body>
@@ -180,7 +185,6 @@
 
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
-  const cores = ['c1', 'c2', 'c3', 'c4'];
 
   function notasRef(blocoId) {
     return collection(db, 'anotacoes', blocoId, 'notas');
@@ -205,7 +209,7 @@
       });
       tituloEl.value = '';
       textoEl.value = '';
-      status.textContent = 'Post-it salvo!';
+      status.textContent = 'Anotação salva!';
       await window.carregarNotas(blocoId);
     } catch (e) {
       status.textContent = 'Erro ao salvar: ' + e.message;
@@ -227,35 +231,31 @@
       const q = query(notasRef(blocoId), orderBy('criadoEm', 'desc'));
       const snap = await getDocs(q);
       if (snap.empty) {
-        lista.innerHTML = '<p class="hint">Nenhum post-it ainda neste bloco.</p>';
+        lista.innerHTML = '<p class="hint">Nenhuma anotação ainda neste bloco.</p>';
         return;
       }
       lista.innerHTML = '';
-      const grid = document.createElement('div');
-      grid.className = 'post-its';
-      let i = 0;
+      const caderno = document.createElement('div');
+      caderno.className = 'caderno';
       snap.forEach(d => {
         const item = d.data();
         const data = item.criadoEm && item.criadoEm.toDate ? item.criadoEm.toDate() : new Date();
-        const dataFmt = data.toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit'}) + ' ' + data.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
-        const card = document.createElement('div');
-        card.className = 'post-it ' + cores[i % cores.length];
-        i++;
-        card.innerHTML = `
-          <div>
-            <div class="titulo"></div>
-            <div class="texto"></div>
-          </div>
+        const dataFmt = data.toLocaleDateString('pt-BR') + ' às ' + data.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+        const pagina = document.createElement('div');
+        pagina.className = 'pagina-caderno';
+        pagina.innerHTML = `
+          <div class="titulo"></div>
+          <div class="texto"></div>
           <div class="meta">
             <span>${dataFmt}</span>
             <button class="btn-danger" onclick="apagarNota('${blocoId}','${d.id}')">Apagar</button>
           </div>
         `;
-        card.querySelector('.titulo').textContent = item.titulo || 'Sem título';
-        card.querySelector('.texto').textContent = item.texto || '';
-        grid.appendChild(card);
+        pagina.querySelector('.titulo').textContent = item.titulo || 'Sem título';
+        pagina.querySelector('.texto').textContent = item.texto || '';
+        caderno.appendChild(pagina);
       });
-      lista.appendChild(grid);
+      lista.appendChild(caderno);
     } catch (e) {
       lista.innerHTML = '<p class="hint">Erro ao carregar: ' + e.message + '</p>';
     }
@@ -357,6 +357,32 @@ const data = {
   ]
 };
 
+const fontes = {
+  "Direito Penal": [
+    {label: "Código Penal (Planalto)", url: "https://www.planalto.gov.br/ccivil_03/decreto-lei/del2848compilado.htm"}
+  ],
+  "Processo Penal": [
+    {label: "Código de Processo Penal (Planalto)", url: "https://www.planalto.gov.br/ccivil_03/decreto-lei/del3689compilado.htm"},
+    {label: "Lei 9.099/95 (Planalto)", url: "https://www.planalto.gov.br/ccivil_03/leis/l9099.htm"}
+  ],
+  "Processo Civil": [
+    {label: "Código de Processo Civil (Planalto)", url: "https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2015/lei/l13105.htm"},
+    {label: "Lei 9.099/95 (Planalto)", url: "https://www.planalto.gov.br/ccivil_03/leis/l9099.htm"},
+    {label: "Lei 12.153/2009 (Planalto)", url: "https://www.planalto.gov.br/ccivil_03/_ato2007-2010/2009/lei/l12153.htm"}
+  ],
+  "Constitucional e Adm.": [
+    {label: "Constituição Federal (Planalto)", url: "http://www.planalto.gov.br/ccivil_03/constituicao/constituicao.htm"},
+    {label: "Lei 10.261/68 - Estatuto SP (ALESP)", url: "https://www.al.sp.gov.br/repositorio/legislacao/lei/1968/lei-10261-28.10.1968.html"},
+    {label: "Lei 8.429/92 - Improbidade (Planalto)", url: "https://www.planalto.gov.br/ccivil_03/leis/L8429.htm"}
+  ],
+  "Corregedoria": [
+    {label: "Portal do TJSP (Institucional > Corregedoria > Normas)", url: "https://www.tjsp.jus.br/"}
+  ],
+  "Atualidades": [
+    {label: "Lei 13.146/2015 - Estatuto da Pessoa com Deficiência (Planalto)", url: "https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2015/lei/l13146.htm"}
+  ]
+};
+
 let state = {};
 let abaAtiva = null;
 
@@ -412,14 +438,15 @@ function montarPaginas() {
       <div class="bloco-card">
         <h2>${bloco}</h2>
         <div class="bloco-count" id="count-${id}">${feitos} de ${tarefas.length} feitas</div>
+        <div id="fontes-${id}"></div>
         <div id="tasks-${id}"></div>
         <div class="notas-section">
-          <h2>Meus post-its</h2>
+          <h2>Meu caderno de anotações</h2>
           <div class="nota-form">
-            <input type="text" id="nota-titulo-${id}" placeholder="Título do post-it">
+            <input type="text" id="nota-titulo-${id}" placeholder="Título da anotação">
             <textarea id="nota-input-${id}" placeholder="Escreva aqui..."></textarea>
             <div class="btn-row" style="margin-top:8px;">
-              <button class="btn-save" onclick="adicionarNota('${id}')">Colar post-it</button>
+              <button class="btn-save" onclick="adicionarNota('${id}')">Adicionar ao caderno</button>
             </div>
             <div class="nota-status" id="nota-status-${id}"></div>
           </div>
@@ -428,6 +455,12 @@ function montarPaginas() {
       </div>
     `;
     pages.appendChild(page);
+    if (fontes[bloco]) {
+      const fontesDiv = page.querySelector('#fontes-' + id);
+      fontesDiv.innerHTML = '<div class="hint" style="margin-bottom:10px;">Fontes oficiais: ' +
+        fontes[bloco].map(f => `<a href="${f.url}" target="_blank" rel="noopener">${f.label}</a>`).join(' &middot; ') +
+        '</div>';
+    }
     const list = page.querySelector('#tasks-' + id);
     tarefas.forEach((t, ti) => {
       const key = bloco + '|' + ti;
