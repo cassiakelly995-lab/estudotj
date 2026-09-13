@@ -44,8 +44,8 @@
   button:active { transform: scale(0.97); }
   .btn-primary { background: #7f77dd; color: #fff; border: none; }
   .btn-rest { background: #1d9e75; color: #fff; border: none; }
-  .btn-save { background: #1d9e75; color: #fff; border: none; }
-  .btn-danger { background: #fff; color: #a32d2d; border: 1px solid #f0bcbc; font-size: 13px; padding: 6px 10px; min-height: auto; }
+  .btn-save { background: #c9a84c; color: #3a2f0e; border: none; font-weight: bold; }
+  .btn-danger { background: rgba(255,255,255,0.6); color: #a32d2d; border: 1px solid rgba(163,45,45,0.3); font-size: 12px; padding: 4px 9px; min-height: auto; }
   .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
 
   .timer-display { font-size: 40px; font-weight: bold; text-align: center; letter-spacing: 2px; margin: 4px 0; }
@@ -76,18 +76,43 @@
   .task label { flex: 1; cursor: pointer; }
   .task.done label { text-decoration: line-through; color: #9a988f; }
 
-  .notas-section { margin-top: 22px; border-top: 2px dashed #e3ddd3; padding-top: 16px; }
+  .notas-section { margin-top: 22px; border-top: 2px dashed #e3ddd3; padding-top: 18px; }
+
+  .nota-form {
+    background: #fdf6f0; border: 1px dashed #d8c9a8; border-radius: 12px; padding: 14px;
+  }
+  .nota-form input[type="text"] {
+    width: 100%; font-family: inherit; font-size: 15px; font-weight: bold;
+    padding: 9px 10px; border-radius: 8px; border: 1px solid #d8d0c2; margin-bottom: 8px;
+  }
   .nota-form textarea {
     width: 100%; min-height: 70px; font-family: inherit; font-size: 15px;
-    padding: 10px; border-radius: 10px; border: 1px solid #d8d0c2; resize: vertical;
+    padding: 10px; border-radius: 8px; border: 1px solid #d8d0c2; resize: vertical;
   }
-  .nota-status { font-size: 13px; color: #6b6a63; margin: 6px 0 12px; }
-  .nota-card {
-    background: #faf7f2; border-radius: 12px; padding: 12px 14px; margin-bottom: 10px;
-    border-left: 4px solid #7f77dd;
+  .nota-status { font-size: 13px; color: #6b6a63; margin-top: 8px; }
+
+  .post-its {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 16px; margin-top: 18px;
   }
-  .nota-card .nota-texto { white-space: pre-wrap; margin-bottom: 6px; }
-  .nota-card .nota-meta { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #9a988f; }
+  .post-it {
+    padding: 14px 14px 10px; border-radius: 2px; min-height: 130px;
+    box-shadow: 3px 4px 10px rgba(0,0,0,0.15);
+    display: flex; flex-direction: column; justify-content: space-between;
+    position: relative;
+  }
+  .post-it::before {
+    content: ""; position: absolute; top: -8px; left: 50%; transform: translateX(-50%) rotate(-4deg);
+    width: 34px; height: 14px; background: rgba(255,255,255,0.55); border-radius: 2px;
+  }
+  .post-it.c1 { background: #fff3b0; transform: rotate(-2deg); }
+  .post-it.c2 { background: #ffd6e0; transform: rotate(1.5deg); }
+  .post-it.c3 { background: #cdeedd; transform: rotate(-1deg); }
+  .post-it.c4 { background: #d6e6ff; transform: rotate(2deg); }
+  .post-it .titulo { font-weight: bold; font-size: 15px; margin-bottom: 6px; word-break: break-word; }
+  .post-it .texto { font-size: 14px; white-space: pre-wrap; word-break: break-word; flex: 1; }
+  .post-it .meta { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-size: 11px; color: #5a5a52; }
+
   .hint { font-size: 13px; color: #6b6a63; margin-top: 6px; }
 </style>
 </head>
@@ -155,24 +180,32 @@
 
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
+  const cores = ['c1', 'c2', 'c3', 'c4'];
 
   function notasRef(blocoId) {
     return collection(db, 'anotacoes', blocoId, 'notas');
   }
 
   window.adicionarNota = async function(blocoId) {
-    const textarea = document.getElementById('nota-input-' + blocoId);
+    const tituloEl = document.getElementById('nota-titulo-' + blocoId);
+    const textoEl = document.getElementById('nota-input-' + blocoId);
     const status = document.getElementById('nota-status-' + blocoId);
-    const texto = textarea.value.trim();
-    if (!texto) {
-      status.textContent = 'Escreva algo antes de salvar.';
+    const titulo = tituloEl.value.trim();
+    const texto = textoEl.value.trim();
+    if (!titulo && !texto) {
+      status.textContent = 'Escreva um título ou um texto antes de salvar.';
       return;
     }
     status.textContent = 'Salvando...';
     try {
-      await addDoc(notasRef(blocoId), { texto: texto, criadoEm: serverTimestamp() });
-      textarea.value = '';
-      status.textContent = 'Anotação salva!';
+      await addDoc(notasRef(blocoId), {
+        titulo: titulo || 'Sem título',
+        texto: texto,
+        criadoEm: serverTimestamp()
+      });
+      tituloEl.value = '';
+      textoEl.value = '';
+      status.textContent = 'Post-it salvo!';
       await window.carregarNotas(blocoId);
     } catch (e) {
       status.textContent = 'Erro ao salvar: ' + e.message;
@@ -194,26 +227,35 @@
       const q = query(notasRef(blocoId), orderBy('criadoEm', 'desc'));
       const snap = await getDocs(q);
       if (snap.empty) {
-        lista.innerHTML = '<p class="hint">Nenhuma anotação ainda neste bloco.</p>';
+        lista.innerHTML = '<p class="hint">Nenhum post-it ainda neste bloco.</p>';
         return;
       }
       lista.innerHTML = '';
+      const grid = document.createElement('div');
+      grid.className = 'post-its';
+      let i = 0;
       snap.forEach(d => {
         const item = d.data();
         const data = item.criadoEm && item.criadoEm.toDate ? item.criadoEm.toDate() : new Date();
-        const dataFmt = data.toLocaleDateString('pt-BR') + ' às ' + data.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+        const dataFmt = data.toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit'}) + ' ' + data.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
         const card = document.createElement('div');
-        card.className = 'nota-card';
+        card.className = 'post-it ' + cores[i % cores.length];
+        i++;
         card.innerHTML = `
-          <div class="nota-texto"></div>
-          <div class="nota-meta">
+          <div>
+            <div class="titulo"></div>
+            <div class="texto"></div>
+          </div>
+          <div class="meta">
             <span>${dataFmt}</span>
             <button class="btn-danger" onclick="apagarNota('${blocoId}','${d.id}')">Apagar</button>
           </div>
         `;
-        card.querySelector('.nota-texto').textContent = item.texto;
-        lista.appendChild(card);
+        card.querySelector('.titulo').textContent = item.titulo || 'Sem título';
+        card.querySelector('.texto').textContent = item.texto || '';
+        grid.appendChild(card);
       });
+      lista.appendChild(grid);
     } catch (e) {
       lista.innerHTML = '<p class="hint">Erro ao carregar: ' + e.message + '</p>';
     }
@@ -372,11 +414,12 @@ function montarPaginas() {
         <div class="bloco-count" id="count-${id}">${feitos} de ${tarefas.length} feitas</div>
         <div id="tasks-${id}"></div>
         <div class="notas-section">
-          <h2>Minhas anotações</h2>
+          <h2>Meus post-its</h2>
           <div class="nota-form">
-            <textarea id="nota-input-${id}" placeholder="Escreva uma anotação nova..."></textarea>
+            <input type="text" id="nota-titulo-${id}" placeholder="Título do post-it">
+            <textarea id="nota-input-${id}" placeholder="Escreva aqui..."></textarea>
             <div class="btn-row" style="margin-top:8px;">
-              <button class="btn-save" onclick="adicionarNota('${id}')">Adicionar anotação</button>
+              <button class="btn-save" onclick="adicionarNota('${id}')">Colar post-it</button>
             </div>
             <div class="nota-status" id="nota-status-${id}"></div>
           </div>
