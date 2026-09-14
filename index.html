@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#7a1f2c">
+<link rel="icon" href="icon-192.png">
 <title>Plano de estudo - Escrevente TJSP</title>
 <style>
   * { box-sizing: border-box; }
@@ -131,6 +134,41 @@
     background: #eeedfe; color: #26215c; border: none; border-radius: 50%;
     width: 34px; height: 34px; min-height: 34px; padding: 0; font-size: 15px; flex-shrink: 0;
   }
+
+  /* Modo escuro */
+  body.dark { background: #1c1a22; color: #eee6da; }
+  body.dark .top-card, body.dark .bloco-card { background: #2a2732; box-shadow: none; border: 1px solid #3a3644; }
+  body.dark .sub, body.dark .hint, body.dark .bloco-count, body.dark .progress-text { color: #b8b2c4; }
+  body.dark .tab-btn { background: #2a2732; color: #eee6da; border-color: #3a3644; }
+  body.dark .tab-btn.active { background: #c9a84c; color: #1c1a22; border-color: #c9a84c; }
+  body.dark .task { border-top-color: #3a3644; }
+  body.dark .pagina-caderno { background: #2a2732; border-left-color: #c9a84c; }
+  body.dark .pagina-caderno .titulo { border-bottom-color: #3a3644; }
+  body.dark .nota-form { background: #232030; border-color: #4a4456; }
+  body.dark .nota-form input, body.dark .nota-form textarea { background: #1c1a22; color: #eee6da; border-color: #4a4456; }
+  body.dark button { background: #2a2732; color: #eee6da; border-color: #4a4456; }
+  body.dark .btn-danger { background: #2a2732; }
+  body.dark .pdf-item { background: #232030; }
+  body.dark .hint a { color: #c9a84c; }
+
+  .config-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+  .chart-wrap { display: flex; align-items: flex-end; gap: 6px; height: 90px; margin-top: 10px; }
+  .chart-bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; }
+  .chart-bar { width: 100%; background: linear-gradient(180deg,#5dcaa5,#1d9e75); border-radius: 4px 4px 0 0; min-height: 3px; }
+  .chart-label { font-size: 10px; color: #9a988f; margin-top: 4px; }
+
+  .revisao-item { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 0; border-top: 1px solid #f0ebe2; }
+  .revisao-item:first-child { border-top: none; }
+
+  .quiz-section { margin-top: 22px; border-top: 2px dashed #e3ddd3; padding-top: 18px; }
+  .quiz-opcao {
+    display: block; width: 100%; text-align: left; margin-bottom: 8px;
+    padding: 12px 14px; border-radius: 10px; border: 1px solid #d8d0c2; background: #fff;
+  }
+  .quiz-opcao.certa { background: #d7f2e4; border-color: #1d9e75; }
+  .quiz-opcao.errada { background: #fbdcdc; border-color: #a32d2d; }
+  .quiz-progresso { font-size: 13px; color: #6b6a63; margin-bottom: 10px; }
 </style>
 </head>
 <body>
@@ -138,6 +176,28 @@
 
 <h1>Plano de estudo — Escrevente Técnico Judiciário (TJSP)</h1>
 <p class="sub">Blocos curtos, metas pequenas, sem culpa nas pausas.</p>
+
+<div class="top-card">
+  <h2>Configurações de leitura</h2>
+  <div class="config-row">
+    <button onclick="mudarFonte(-1)">A-</button>
+    <button onclick="mudarFonte(1)">A+</button>
+    <button onclick="alternarModoEscuro()" id="btn-modo-escuro">🌙 Modo escuro</button>
+    <button onclick="baixarAnotacoes()">⬇️ Baixar minhas anotações</button>
+  </div>
+  <div class="hint" id="backup-status"></div>
+</div>
+
+<div class="top-card" id="revisao-card" style="display:none;">
+  <h2>Revisão sugerida</h2>
+  <p class="hint">Tarefas que você concluiu há alguns dias — bom momento pra revisar.</p>
+  <div id="revisao-lista"></div>
+</div>
+
+<div class="top-card">
+  <h2>Seu progresso nos últimos 7 dias</h2>
+  <div class="chart-wrap" id="chart"></div>
+</div>
 
 <div class="top-card">
   <div class="progress-text" id="progress-text">0 de 0 tarefas concluídas</div>
@@ -233,6 +293,18 @@
       await deleteDoc(doc(db, 'anotacoes', blocoId, 'notas', notaId));
       await window.carregarNotas(blocoId);
     } catch (e) {}
+  };
+
+  window.listarNotasParaBackup = async function(blocoId) {
+    try {
+      const q = query(notasRef(blocoId), orderBy('criadoEm', 'desc'));
+      const snap = await getDocs(q);
+      const resultado = [];
+      snap.forEach(d => resultado.push(d.data()));
+      return resultado;
+    } catch (e) {
+      return [];
+    }
   };
 
   window.carregarNotas = async function(blocoId) {
@@ -522,7 +594,100 @@ const fontes = {
   ]
 };
 
+const quizzes = {
+  "Português": [
+    { p: "Qual é o antônimo de 'alegre'?", o: ["Triste", "Contente", "Feliz", "Sorridente", "Animado"], c: 0 },
+    { p: "Em qual frase a crase está usada corretamente?", o: ["Vou à escola todos os dias.", "Vou à São Paulo amanhã.", "Cheguei à ele atrasada.", "Entreguei à ele o presente.", "Fui à pé até o mercado."], c: 0 },
+    { p: "Qual das palavras abaixo é um advérbio?", o: ["Rapidamente", "Rápido", "Rapidez", "Rápida", "Veloz"], c: 0 },
+    { p: "\"Maria estudou bastante, mas não passou no concurso.\" A palavra 'mas' indica ideia de:", o: ["Adição", "Oposição/contraste", "Causa", "Conclusão", "Condição"], c: 1 },
+    { p: "Assinale a alternativa com concordância nominal correta:", o: ["As meninas estão contente.", "As meninas estão contentes.", "A menina estão contente.", "As menina está contentes.", "As meninas está contente."], c: 1 }
+  ],
+  "Matemática": [
+    { p: "Quanto é 15% de 200?", o: ["20", "25", "30", "35", "40"], c: 2 },
+    { p: "Qual é o MMC (mínimo múltiplo comum) de 4 e 6?", o: ["10", "12", "24", "8", "6"], c: 1 },
+    { p: "Um produto custa R$ 80 e tem desconto de 25%. Qual o novo preço?", o: ["R$ 55", "R$ 60", "R$ 65", "R$ 70", "R$ 75"], c: 1 },
+    { p: "Resolva: 2x + 3 = 11. Qual o valor de x?", o: ["3", "4", "5", "6", "7"], c: 1 },
+    { p: "Qual é a área de um retângulo com base 5 e altura 4?", o: ["9", "18", "20", "22", "24"], c: 2 }
+  ],
+  "Raciocínio Lógico": [
+    { p: "Complete a sequência: 2, 4, 6, 8, __", o: ["9", "10", "11", "12", "14"], c: 1 },
+    { p: "Se todos os gatos são animais, e Félix é um gato, então:", o: ["Félix é um animal", "Félix não é um animal", "Todos os animais são gatos", "Félix é um cachorro", "Não se pode concluir nada"], c: 0 },
+    { p: "Complete a sequência: 1, 1, 2, 3, 5, 8, __", o: ["11", "12", "13", "14", "10"], c: 2 },
+    { p: "\"Se chove, a rua fica molhada. A rua não está molhada.\" Logo:", o: ["Não choveu", "Choveu", "Vai chover", "A rua está seca mas choveu", "Nada se conclui"], c: 0 },
+    { p: "Complete a sequência de letras: A, C, E, G, __", o: ["H", "I", "J", "F", "K"], c: 1 }
+  ]
+};
+let quizEstado = {};
+
+function montarQuizHtml(bloco, id) {
+  if (!quizzes[bloco]) return '';
+  return `
+    <div class="quiz-section" id="quiz-section-${id}">
+      <h2>Simulado rápido</h2>
+      <div id="quiz-area-${id}">
+        <button class="btn-primary" onclick="iniciarQuiz('${id}')">Começar simulado (5 perguntas)</button>
+      </div>
+    </div>
+  `;
+}
+
+function iniciarQuiz(id) {
+  quizEstado[id] = { i: 0, acertos: 0 };
+  renderQuizPergunta(id);
+}
+
+function renderQuizPergunta(id) {
+  const bloco = Object.keys(data).find(b => slug(b) === id);
+  const perguntas = quizzes[bloco];
+  const est = quizEstado[id];
+  const area = document.getElementById('quiz-area-' + id);
+  if (est.i >= perguntas.length) {
+    area.innerHTML = `
+      <p><strong>Resultado: ${est.acertos} de ${perguntas.length} acertos.</strong></p>
+      <button class="btn-primary" onclick="iniciarQuiz('${id}')">Refazer simulado</button>
+    `;
+    return;
+  }
+  const q = perguntas[est.i];
+  area.innerHTML = `
+    <div class="quiz-progresso">Pergunta ${est.i + 1} de ${perguntas.length}</div>
+    <p><strong>${q.p}</strong></p>
+    <div id="quiz-opcoes-${id}"></div>
+  `;
+  const opcoesDiv = document.getElementById('quiz-opcoes-' + id);
+  q.o.forEach((opcao, oi) => {
+    const btn = document.createElement('button');
+    btn.className = 'quiz-opcao';
+    btn.textContent = opcao;
+    btn.onclick = () => responderQuiz(id, oi);
+    opcoesDiv.appendChild(btn);
+  });
+}
+
+function responderQuiz(id, escolhida) {
+  const bloco = Object.keys(data).find(b => slug(b) === id);
+  const perguntas = quizzes[bloco];
+  const est = quizEstado[id];
+  const q = perguntas[est.i];
+  const botoes = document.querySelectorAll('#quiz-opcoes-' + id + ' .quiz-opcao');
+  botoes.forEach((b, i) => {
+    b.disabled = true;
+    if (i === q.c) b.classList.add('certa');
+    else if (i === escolhida) b.classList.add('errada');
+  });
+  if (escolhida === q.c) est.acertos++;
+  const area = document.getElementById('quiz-area-' + id);
+  const continuar = document.createElement('button');
+  continuar.className = 'btn-primary';
+  continuar.style.marginTop = '10px';
+  continuar.textContent = (est.i + 1 < perguntas.length) ? 'Próxima pergunta' : 'Ver resultado';
+  continuar.onclick = () => { est.i++; renderQuizPergunta(id); };
+  area.appendChild(continuar);
+}
+
 let state = {};
+let historico = {};
+let concluidoEm = {};
 let abaAtiva = null;
 
 function slug(txt) {
@@ -536,17 +701,149 @@ function carregar() {
   try {
     const raw = localStorage.getItem('tjsp-progresso');
     if (raw) state = JSON.parse(raw);
-  } catch (e) { state = {}; }
+    const rawHist = localStorage.getItem('tjsp-historico');
+    if (rawHist) historico = JSON.parse(rawHist);
+    const rawConcl = localStorage.getItem('tjsp-concluido-em');
+    if (rawConcl) concluidoEm = JSON.parse(rawConcl);
+  } catch (e) { state = {}; historico = {}; concluidoEm = {}; }
   montarTabs();
   montarPaginas();
   atualizarProgresso();
+  montarGrafico();
+  montarRevisao();
+  carregarPreferenciasVisuais();
   const primeiraChave = Object.keys(data)[0];
   abrirAba(slug(primeiraChave));
 }
 
 function salvar() {
-  try { localStorage.setItem('tjsp-progresso', JSON.stringify(state)); }
-  catch (e) {}
+  try {
+    localStorage.setItem('tjsp-progresso', JSON.stringify(state));
+    localStorage.setItem('tjsp-historico', JSON.stringify(historico));
+    localStorage.setItem('tjsp-concluido-em', JSON.stringify(concluidoEm));
+  } catch (e) {}
+}
+
+function hojeStr() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function carregarPreferenciasVisuais() {
+  const fonte = localStorage.getItem('tjsp-fonte');
+  if (fonte) document.body.style.fontSize = fonte + 'px';
+  const escuro = localStorage.getItem('tjsp-modo-escuro');
+  if (escuro === '1') {
+    document.body.classList.add('dark');
+    document.getElementById('btn-modo-escuro').textContent = '☀️ Modo claro';
+  }
+}
+
+function mudarFonte(delta) {
+  const atual = parseInt(window.getComputedStyle(document.body).fontSize) || 17;
+  const novo = Math.max(14, Math.min(24, atual + delta));
+  document.body.style.fontSize = novo + 'px';
+  localStorage.setItem('tjsp-fonte', novo);
+}
+
+function alternarModoEscuro() {
+  const ativo = document.body.classList.toggle('dark');
+  localStorage.setItem('tjsp-modo-escuro', ativo ? '1' : '0');
+  document.getElementById('btn-modo-escuro').textContent = ativo ? '☀️ Modo claro' : '🌙 Modo escuro';
+}
+
+function montarGrafico() {
+  const dias = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    dias.push(d.toISOString().slice(0, 10));
+  }
+  const valores = dias.map(d => historico[d] || 0);
+  const max = Math.max(1, ...valores);
+  const chart = document.getElementById('chart');
+  chart.innerHTML = '';
+  dias.forEach((d, i) => {
+    const col = document.createElement('div');
+    col.className = 'chart-bar-col';
+    const alturaPct = Math.round((valores[i] / max) * 100);
+    const label = d.slice(8, 10) + '/' + d.slice(5, 7);
+    col.innerHTML = `
+      <div style="font-size:11px; color:#6b6a63; margin-bottom:2px;">${valores[i] || ''}</div>
+      <div class="chart-bar" style="height:${Math.max(alturaPct,3)}%"></div>
+      <div class="chart-label">${label}</div>
+    `;
+    chart.appendChild(col);
+  });
+}
+
+function montarRevisao() {
+  const card = document.getElementById('revisao-card');
+  const lista = document.getElementById('revisao-lista');
+  const hoje = new Date();
+  const pendentesRevisao = [];
+  Object.keys(concluidoEm).forEach(key => {
+    const dataConcl = new Date(concluidoEm[key]);
+    const diffDias = Math.floor((hoje - dataConcl) / (1000 * 60 * 60 * 24));
+    if (diffDias >= 3 && state[key]) {
+      const [bloco, ti] = key.split('|');
+      if (data[bloco] && data[bloco][ti]) {
+        pendentesRevisao.push({ key, bloco, texto: data[bloco][ti] });
+      }
+    }
+  });
+  if (pendentesRevisao.length === 0) {
+    card.style.display = 'none';
+    return;
+  }
+  card.style.display = 'block';
+  lista.innerHTML = '';
+  pendentesRevisao.slice(0, 5).forEach(item => {
+    const div = document.createElement('div');
+    div.className = 'revisao-item';
+    div.innerHTML = `
+      <span><strong>${item.bloco}</strong><br>${item.texto}</span>
+      <button onclick="marcarRevisado('${item.key}')">Já revisei</button>
+    `;
+    lista.appendChild(div);
+  });
+}
+
+function marcarRevisado(key) {
+  concluidoEm[key] = new Date().toISOString();
+  salvar();
+  montarRevisao();
+}
+
+async function baixarAnotacoes() {
+  const status = document.getElementById('backup-status');
+  status.textContent = 'Reunindo suas anotações...';
+  try {
+    let textoFinal = 'MINHAS ANOTAÇÕES - Plano de estudo TJSP\n';
+    textoFinal += 'Baixado em: ' + new Date().toLocaleString('pt-BR') + '\n\n';
+    for (const bloco of Object.keys(data)) {
+      const id = slug(bloco);
+      if (!window.listarNotasParaBackup) continue;
+      const notas = await window.listarNotasParaBackup(id);
+      textoFinal += '=== ' + bloco + ' ===\n\n';
+      if (!notas.length) {
+        textoFinal += '(sem anotações)\n\n';
+        continue;
+      }
+      notas.forEach(n => {
+        textoFinal += '- ' + (n.titulo || 'Sem título') + '\n';
+        textoFinal += (n.texto || '') + '\n\n';
+      });
+    }
+    const blob = new Blob([textoFinal], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'minhas-anotacoes-tjsp.txt';
+    a.click();
+    status.textContent = 'Baixado!';
+  } catch (e) {
+    status.textContent = 'Erro ao baixar: ' + e.message;
+  }
 }
 
 function montarTabs() {
@@ -605,6 +902,7 @@ function montarPaginas() {
           </div>
           <div id="notas-lista-${id}"></div>
         </div>
+        ${montarQuizHtml(bloco, id)}
       </div>
     `;
     pages.appendChild(page);
@@ -631,8 +929,18 @@ function montarPaginas() {
       div.querySelector('input').addEventListener('change', (e) => {
         state[key] = e.target.checked;
         div.classList.toggle('done', e.target.checked);
+        const hoje = hojeStr();
+        if (e.target.checked) {
+          concluidoEm[key] = new Date().toISOString();
+          historico[hoje] = (historico[hoje] || 0) + 1;
+        } else {
+          delete concluidoEm[key];
+          if (historico[hoje]) historico[hoje] = Math.max(0, historico[hoje] - 1);
+        }
         salvar();
         atualizarProgresso();
+        montarGrafico();
+        montarRevisao();
         const novosFeitos = tarefas.filter((_, i2) => state[bloco + '|' + i2]).length;
         document.getElementById('count-' + id).textContent = novosFeitos + ' de ' + tarefas.length + ' feitas';
       });
@@ -768,6 +1076,12 @@ function modoDescanso() {
 }
 
 carregar();
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
 </script>
 
 </body>
