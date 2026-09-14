@@ -119,6 +119,18 @@
 
   .hint { font-size: 13px; color: #6b6a63; margin-top: 6px; }
   .hint a { color: #26215c; font-weight: bold; text-decoration: underline; }
+
+  .pdf-section { margin-top: 16px; border-top: 1px solid #f0ebe2; padding-top: 12px; }
+  .pdf-upload-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .pdf-item {
+    display: flex; justify-content: space-between; align-items: center;
+    background: #faf7f2; border-radius: 10px; padding: 8px 12px; margin-top: 8px;
+  }
+  .pdf-nome { font-size: 14px; word-break: break-word; }
+  .btn-fala {
+    background: #eeedfe; color: #26215c; border: none; border-radius: 50%;
+    width: 34px; height: 34px; min-height: 34px; padding: 0; font-size: 15px; flex-shrink: 0;
+  }
 </style>
 </head>
 <body>
@@ -248,11 +260,17 @@
           <div class="texto"></div>
           <div class="meta">
             <span>${dataFmt}</span>
-            <button class="btn-danger" onclick="apagarNota('${blocoId}','${d.id}')">Apagar</button>
+            <div class="btn-row">
+              <button class="btn-fala" title="Ouvir anotação">🔊</button>
+              <button class="btn-danger" onclick="apagarNota('${blocoId}','${d.id}')">Apagar</button>
+            </div>
           </div>
         `;
         pagina.querySelector('.titulo').textContent = item.titulo || 'Sem título';
         pagina.querySelector('.texto').textContent = item.texto || '';
+        pagina.querySelector('.btn-fala').addEventListener('click', () => {
+          window.falar((item.titulo || '') + '. ' + (item.texto || ''));
+        });
         caderno.appendChild(pagina);
       });
       lista.appendChild(caderno);
@@ -260,6 +278,127 @@
       lista.innerHTML = '<p class="hint">Erro ao carregar: ' + e.message + '</p>';
     }
   };
+</script>
+
+<script>
+// ---- Leitor de voz ----
+function falar(texto) {
+  if (!('speechSynthesis' in window)) {
+    alert('Seu navegador não tem leitor de voz disponível.');
+    return;
+  }
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(texto);
+  u.lang = 'pt-BR';
+  u.rate = 0.95;
+  window.speechSynthesis.speak(u);
+}
+function pararFala() {
+  if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+}
+
+// ---- PDFs guardados no navegador (sem custo, sem conta) ----
+let pdfDB = null;
+function abrirPdfDB() {
+  return new Promise((resolve, reject) => {
+    if (pdfDB) return resolve(pdfDB);
+    const req = indexedDB.open('estudoPDFs', 1);
+    req.onupgradeneeded = (e) => {
+      const dbi = e.target.result;
+      if (!dbi.objectStoreNames.contains('pdfs')) {
+        const store = dbi.createObjectStore('pdfs', { keyPath: 'id', autoIncrement: true });
+        store.createIndex('blocoId', 'blocoId', { unique: false });
+      }
+    };
+    req.onsuccess = (e) => { pdfDB = e.target.result; resolve(pdfDB); };
+    req.onerror = (e) => reject(e);
+  });
+}
+
+function salvarPDF(blocoId, file) {
+  return abrirPdfDB().then(dbi => new Promise((resolve, reject) => {
+    const tx = dbi.transaction('pdfs', 'readwrite');
+    tx.objectStore('pdfs').add({ blocoId, nome: file.name, blob: file, criadoEm: new Date().toISOString() });
+    tx.oncomplete = () => resolve();
+    tx.onerror = (e) => reject(e);
+  }));
+}
+
+function listarPDFs(blocoId) {
+  return abrirPdfDB().then(dbi => new Promise((resolve, reject) => {
+    const tx = dbi.transaction('pdfs', 'readonly');
+    const idx = tx.objectStore('pdfs').index('blocoId');
+    const req = idx.getAll(blocoId);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = (e) => reject(e);
+  }));
+}
+
+window.apagarPDF = function(id, blocoId) {
+  abrirPdfDB().then(dbi => {
+    const tx = dbi.transaction('pdfs', 'readwrite');
+    tx.objectStore('pdfs').delete(id);
+    tx.oncomplete = () => renderPDFs(blocoId);
+  });
+};
+
+window.abrirPDFStored = function(id) {
+  abrirPdfDB().then(dbi => {
+    const tx = dbi.transaction('pdfs', 'readonly');
+    const req = tx.objectStore('pdfs').get(id);
+    req.onsuccess = () => {
+      if (req.result) {
+        const url = URL.createObjectURL(req.result.blob);
+        window.open(url, '_blank');
+      }
+    };
+  });
+};
+
+window.uploadPDF = function(blocoId) {
+  const input = document.getElementById('pdf-input-' + blocoId);
+  const status = document.getElementById('pdf-status-' + blocoId);
+  if (!input.files || !input.files[0]) {
+    status.textContent = 'Escolha um arquivo PDF primeiro.';
+    return;
+  }
+  const file = input.files[0];
+  if (file.type !== 'application/pdf') {
+    status.textContent = 'Só é possível enviar arquivos PDF.';
+    return;
+  }
+  status.textContent = 'Guardando...';
+  salvarPDF(blocoId, file).then(() => {
+    input.value = '';
+    status.textContent = 'PDF guardado neste navegador!';
+    renderPDFs(blocoId);
+  });
+};
+
+window.renderPDFs = function(blocoId) {
+  const lista = document.getElementById('pdf-lista-' + blocoId);
+  if (!lista) return;
+  listarPDFs(blocoId).then(arquivos => {
+    if (!arquivos.length) {
+      lista.innerHTML = '<p class="hint">Nenhum PDF enviado ainda neste bloco.</p>';
+      return;
+    }
+    lista.innerHTML = '';
+    arquivos.forEach(a => {
+      const item = document.createElement('div');
+      item.className = 'pdf-item';
+      item.innerHTML = `
+        <span class="pdf-nome"></span>
+        <div class="btn-row">
+          <button onclick="abrirPDFStored(${a.id})">Abrir</button>
+          <button class="btn-danger" onclick="apagarPDF(${a.id}, '${blocoId}')">Apagar</button>
+        </div>
+      `;
+      item.querySelector('.pdf-nome').textContent = a.nome;
+      lista.appendChild(item);
+    });
+  });
+};
 </script>
 
 <script>
@@ -439,7 +578,21 @@ function montarPaginas() {
         <h2>${bloco}</h2>
         <div class="bloco-count" id="count-${id}">${feitos} de ${tarefas.length} feitas</div>
         <div id="fontes-${id}"></div>
+        <div class="btn-row" style="margin-bottom:10px;">
+          <button onclick="ouvirTarefasPendentes('${id}')">🔊 Ouvir tarefas</button>
+          <button onclick="pararFala()">Parar leitura</button>
+        </div>
         <div id="tasks-${id}"></div>
+        <div class="pdf-section">
+          <h2>Meus PDFs deste bloco</h2>
+          <p class="hint">Fica guardado neste navegador/aparelho, sem custo.</p>
+          <div class="pdf-upload-row">
+            <input type="file" accept="application/pdf" id="pdf-input-${id}">
+            <button class="btn-save" onclick="uploadPDF('${id}')">Enviar PDF</button>
+          </div>
+          <div class="nota-status" id="pdf-status-${id}"></div>
+          <div id="pdf-lista-${id}"></div>
+        </div>
         <div class="notas-section">
           <h2>Meu caderno de anotações</h2>
           <div class="nota-form">
@@ -469,8 +622,11 @@ function montarPaginas() {
       div.className = 'task' + (done ? ' done' : '');
       div.innerHTML = `
         <input type="checkbox" id="chk-${id}-${ti}" ${done ? 'checked' : ''}>
-        <label for="chk-${id}-${ti}">${t}</label>
+        <label for="chk-${id}-${ti}"></label>
+        <button class="btn-fala" title="Ouvir esta tarefa">🔊</button>
       `;
+      div.querySelector('label').textContent = t;
+      div.querySelector('.btn-fala').addEventListener('click', () => falar(t));
       list.appendChild(div);
       div.querySelector('input').addEventListener('change', (e) => {
         state[key] = e.target.checked;
@@ -484,6 +640,17 @@ function montarPaginas() {
   });
 }
 
+function ouvirTarefasPendentes(id) {
+  const bloco = Object.keys(data).find(b => slug(b) === id);
+  if (!bloco) return;
+  const pendentes = data[bloco].filter((_, ti) => !state[bloco + '|' + ti]);
+  if (pendentes.length === 0) {
+    falar('Você já concluiu todas as tarefas deste bloco.');
+    return;
+  }
+  falar(pendentes.join('. Próxima tarefa: '));
+}
+
 function abrirAba(id) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -491,6 +658,7 @@ function abrirAba(id) {
   document.getElementById('page-' + id).classList.add('active');
   abaAtiva = id;
   if (window.carregarNotas) window.carregarNotas(id);
+  if (window.renderPDFs) window.renderPDFs(id);
 }
 
 function atualizarProgresso() {
